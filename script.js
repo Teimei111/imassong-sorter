@@ -7,29 +7,26 @@ let cmp1, cmp2, head1, head2, nrec, numQuestion, finishFlag;
 
 async function loadSongs() {
     try {
-        console.log("Fetching songs.json...");
-        const response = await fetch('songs.json?' + new Date().getTime()); // キャッシュ対策
-        if (!response.ok) throw new Error('ファイルを読み込めませんでした');
+        const response = await fetch('songs.json?' + new Date().getTime());
+        if (!response.ok) throw new Error('songs.jsonが見つかりません');
         
         const data = await response.json();
-        console.log("Loaded data:", data);
-
-        // データが配列（[ ... ]）であることを確認して代入
-        if (Array.isArray(data)) {
+        
+        // 【重要】ここで中身をチェック
+        if (data && Array.isArray(data) && data.length > 0) {
             songData = data;
+            console.log("データ読み込み完了:", songData.length, "件");
+            
+            // データが確実に入った後に、ソートの初期化を呼ぶ
+            initSort(); 
         } else {
-            // 万が一オブジェクト形式で届いた場合を考慮
-            songData = Object.values(data);
-        }
-
-        if (songData.length > 0) {
-            initSort();
-        } else {
-            alert("songs.json が空です");
+            throw new Error('データが空か、正しく読み込めませんでした');
         }
     } catch (error) {
-        console.error("Error:", error);
-        document.getElementById("counter").innerText = "エラー: " + error.message;
+        console.error("エラー詳細:", error);
+        document.getElementById("counter").innerText = "エラー発生";
+        document.getElementById("left-btn").innerText = "ファイル確認失敗";
+        document.getElementById("right-btn").innerText = error.message;
     }
 }
 
@@ -134,4 +131,6 @@ function showResult() {
     rankingDiv.innerHTML = html;
 }
 
-window.onload = loadSongs;
+window.onload = function() {
+    loadSongs();
+};
