@@ -1,9 +1,9 @@
 let songData = []; 
-let lstMember = [];
 let parent = [];
-let equal = [];
 let rec = [];
-let cmp1, cmp2, head1, head2, nrec, numQuestion, finishFlag;
+let cmp1, cmp2, head1, head2;
+let numQuestion = 1;
+let finishFlag = 0;
 
 window.onload = function() {
     loadSongs();
@@ -11,72 +11,75 @@ window.onload = function() {
 
 async function loadSongs() {
     try {
+        console.log("Fetching songs.json...");
         const response = await fetch('./songs.json?' + new Date().getTime());
-        if (!response.ok) throw new Error('songs.jsonが見つかりません');
+        if (!response.ok) throw new Error('読み込み失敗');
         const data = await response.json();
+        
         if (data && Array.isArray(data) && data.length > 0) {
             songData = data;
+            console.log("Data loaded:", songData.length, "songs");
             initSort(); 
+        } else {
+            console.error("Data format error:", data);
         }
     } catch (error) {
+        console.error("Fetch error:", error);
         document.getElementById("counter").innerText = "エラー: " + error.message;
     }
 }
 
 function initSort() {
-    lstMember = songData.slice();
     parent = [];
-    equal = [];
-    rec = [];
+    let list = [];
+    for (let i = 0; i < songData.length; i++) {
+        list.push([i]);
+    }
+    parent = list;
     numQuestion = 1;
     finishFlag = 0;
+    
+    // 最初の比較準備
+    prepareNextMerge();
+}
 
-    // ソートの階層構造を作成
-    let n = 0;
-    let list = [[]];
-    for (let i = 0; i < lstMember.length; i++) {
-        list[0][i] = i;
+function prepareNextMerge() {
+    if (parent.length <= 1) {
+        finishFlag = 1;
+        showResult();
+        return;
     }
-
-    parent[n] = list[0];
-    n++;
-    let mid;
-    for (let i = 0; i < list.length; i++) {
-        if (list[i].length > 1) {
-            mid = Math.ceil(list[i].length / 2);
-            list[n] = list[i].slice(0, mid);
-            parent[n] = i;
-            n++;
-            list[n] = list[i].slice(mid);
-            parent[n] = i;
-            n++;
-        }
-    }
-
-    head1 = list.length - 2;
-    head2 = list.length - 1;
+    head1 = 0;
+    head2 = 1;
     cmp1 = 0;
     cmp2 = 0;
-    nrec = 0;
-
+    rec = [];
     showUI();
 }
 
 function showUI() {
+    // データがまだ届いていない場合のセーフティ
+    if (songData.length === 0) {
+        console.log("Waiting for data...");
+        setTimeout(showUI, 100);
+        return;
+    }
+
+    if (finishFlag) return;
+
     document.getElementById("counter").innerText = "質問 " + numQuestion;
 
-    // 現在の比較対象となるインデックスを安全に取得
-    const idx1 = (parent[head1] && parent[head1][cmp1] !== undefined) ? parent[head1][cmp1] : null;
-    const idx2 = (parent[head2] && parent[head2][cmp2] !== undefined) ? parent[head2][cmp2] : null;
+    // 現在のインデックスを取得
+    const idx1 = parent[head1][cmp1];
+    const idx2 = parent[head2][cmp2];
 
-    // 画面に表示
-    if (idx1 !== null && idx2 !== null) {
+    // ボタンに曲名を表示（ここで確実にsongDataを参照する）
+    if (songData[idx1] !== undefined && songData[idx2] !== undefined) {
         document.getElementById("left-btn").innerText = songData[idx1];
         document.getElementById("right-btn").innerText = songData[idx2];
     } else {
-        // 万が一取得できなかった場合のセーフティ
-        document.getElementById("left-btn").innerText = "読み込み中...";
-        document.getElementById("right-btn").innerText = "読み込み中...";
+        document.getElementById("left-btn").innerText = "データ取得エラー(" + idx1 + ")";
+        document.getElementById("right-btn").innerText = "データ取得エラー(" + idx2 + ")";
     }
     
     let progress = Math.min(Math.floor((numQuestion / (songData.length * 7)) * 100), 99);
@@ -85,28 +88,41 @@ function showUI() {
 
 function sortClick(result) {
     if (finishFlag) return;
-
-    if (result === -1) { rec[nrec++] = parent[head1][cmp1++]; }
-    else if (result === 1) { rec[nrec++] = parent[head2][cmp2++]; }
-    else { 
-        rec[nrec++] = parent[head1][cmp1];
-        equal[parent[head1][cmp1]] = parent[head2][cmp2];
-        rec[nrec++] = parent[head2][cmp2++];
-        cmp1++;
+    
+    // 選択結果を保存
+    if (result === -1) { 
+        rec.push(parent[head1][cmp1++]); 
+    } else if (result === 1) { 
+        rec.push(parent[head2][cmp2++]); 
+    } else { 
+        rec.push(parent[head1][cmp1++]);
+        rec.push(parent[head2][cmp2++]);
     }
 
+    // 片方の束を使い切ったか
     if (cmp1 < parent[head1].length && cmp2 < parent[head2].length) {
         numQuestion++;
     } else {
-        while (cmp1 < parent[head1].length) rec[nrec++] = parent[head1][cmp1++];
-        while (cmp2 < parent[head2].length) rec[nrec++] = parent[head2][cmp2++];
-        parent[parent[head1]] = rec;
-        nrec = 0; rec = []; cmp1 = 0; cmp2 = 0;
-        head1 -= 2; head2 -= 2;
-        if (head1 < 0) { finishFlag = 1; showResult(); return; }
-        numQuestion++;
+        while (cmp1 < parent[head1].length) rec.push(parent[head1][cmp1++]);
+        while (cmp2 < parent[head2].length) rec.push(parent[head2][cmp2++]);
+        
+        parent.push(rec); // 合体した束を末尾へ
+        parent.splice(0, 2); // 使った2束を削除
+        
+        if (parent.length > 1) {
+            numQuestion++;
+            cmp1 = 0;
+            cmp2 = 0;
+            rec = [];
+        }
     }
-    showUI();
+
+    if (parent.length <= 1) {
+        finishFlag = 1;
+        showResult();
+    } else {
+        showUI();
+    }
 }
 
 function showResult() {
@@ -114,7 +130,6 @@ function showResult() {
     const resultList = document.getElementById("result-list");
     const rankingDiv = document.getElementById("ranking");
     resultList.style.display = "block";
-    
     let html = "<ul>";
     let finalOrder = parent[0];
     for (let i = 0; i < finalOrder.length; i++) {
