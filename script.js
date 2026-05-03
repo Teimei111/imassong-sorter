@@ -1,4 +1,3 @@
-JavaScript
 let songData = []; 
 let lstMember = [];
 let parent = [];
