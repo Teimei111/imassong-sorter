@@ -1,3 +1,5 @@
+console.log("--- Sorter Script Start ---");
+
 // 変数の宣言
 let songData = []; 
 let lstMember = [];
