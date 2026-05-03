@@ -71,14 +71,24 @@ function initSort() {
     showUI();
 }
 
-// 3. UIの更新
+// 3. UIの更新（undefined対策版）
 function showUI() {
+    // 質問番号の表示
     document.getElementById("counter").innerText = "質問 " + numQuestion;
-    document.getElementById("left-btn").innerText = lstMember[parent[head1][cmp1]];
-    document.getElementById("right-btn").innerText = lstMember[parent[head2][cmp2]];
+
+    // 左側の曲名を取得
+    const leftIndex = parent[head1][cmp1];
+    const leftName = songData[leftIndex];
     
-    // 進捗バー（1,900項目の場合、概算で最大20,000回程度として計算）
-    // 厳密な進捗は難しいので、ここでは質問数ベースで表示
+    // 右側の曲名を取得
+    const rightIndex = parent[head2][cmp2];
+    const rightName = songData[rightIndex];
+
+    // デバッグ用：もしundefinedなら番号を表示させる
+    document.getElementById("left-btn").innerText = leftName !== undefined ? leftName : "不明(index:" + leftIndex + ")";
+    document.getElementById("right-btn").innerText = rightName !== undefined ? rightName : "不明(index:" + rightIndex + ")";
+    
+    // 進捗バーの更新
     let progress = Math.min(Math.floor((numQuestion / (lstMember.length * 11)) * 100), 99);
     document.getElementById("progress").style.width = progress + "%";
 }
