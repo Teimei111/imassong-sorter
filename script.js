@@ -1,36 +1,42 @@
-/**
- * 楽曲データの読み込みとソート実行
- */
-
-let songData = []; // ここにJSONから読み込んだ曲名が入る
+let songData = []; 
 let lstMember = [];
 let parent = [];
 let equal = [];
 let rec = [];
 let cmp1, cmp2, head1, head2, nrec, numQuestion, finishFlag;
 
-// 1. JSONファイルを読み込む関数
 async function loadSongs() {
     try {
-        // GitHub上の同じフォルダにある songs.json を取得
-        const response = await fetch('songs.json');
-        if (!response.ok) throw new Error('Network response was not ok');
+        console.log("Fetching songs.json...");
+        const response = await fetch('songs.json?' + new Date().getTime()); // キャッシュ対策
+        if (!response.ok) throw new Error('ファイルを読み込めませんでした');
         
-        songData = await response.json();
-        
-        // データが読み込めたらソートを初期化
-        initSort();
+        const data = await response.json();
+        console.log("Loaded data:", data);
+
+        // データが配列（[ ... ]）であることを確認して代入
+        if (Array.isArray(data)) {
+            songData = data;
+        } else {
+            // 万が一オブジェクト形式で届いた場合を考慮
+            songData = Object.values(data);
+        }
+
+        if (songData.length > 0) {
+            initSort();
+        } else {
+            alert("songs.json が空です");
+        }
     } catch (error) {
-        console.error("データの読み込みエラー:", error);
-        document.getElementById("left-btn").innerText = "読み込み失敗";
+        console.error("Error:", error);
+        document.getElementById("counter").innerText = "エラー: " + error.message;
     }
 }
 
-// 2. ソートの初期設定
 function initSort() {
-    if (songData.length === 0) return;
+    // songDataが正しくコピーされているか確認
+    lstMember = [...songData]; 
     
-    lstMember = songData.slice();
     parent = [];
     equal = [];
     rec = [];
@@ -71,84 +77,61 @@ function initSort() {
     showUI();
 }
 
-// 3. UIの更新（undefined対策版）
 function showUI() {
-    // 質問番号の表示
     document.getElementById("counter").innerText = "質問 " + numQuestion;
 
-    // 左側の曲名を取得
-    const leftIndex = parent[head1][cmp1];
-    const leftName = songData[leftIndex];
-    
-    // 右側の曲名を取得
-    const rightIndex = parent[head2][cmp2];
-    const rightName = songData[rightIndex];
+    // インデックス番号（0, 1, 2...）を取得
+    const idx1 = parent[head1][cmp1];
+    const idx2 = parent[head2][cmp2];
 
-    // デバッグ用：もしundefinedなら番号を表示させる
-    document.getElementById("left-btn").innerText = leftName !== undefined ? leftName : "不明(index:" + leftIndex + ")";
-    document.getElementById("right-btn").innerText = rightName !== undefined ? rightName : "不明(index:" + rightIndex + ")";
+    // 名前を取り出す。もし空なら「No.番号」を出すように強制変更
+    const name1 = lstMember[idx1] || `曲名不明(Index:${idx1})`;
+    const name2 = lstMember[idx2] || `曲名不明(Index:${idx2})`;
+
+    document.getElementById("left-btn").innerText = name1;
+    document.getElementById("right-btn").innerText = name2;
     
-    // 進捗バーの更新
     let progress = Math.min(Math.floor((numQuestion / (lstMember.length * 11)) * 100), 99);
     document.getElementById("progress").style.width = progress + "%";
 }
 
-// 4. 選択ボタンが押された時の処理
 function sortClick(result) {
     if (finishFlag) return;
-
-    if (result === -1) { 
-        rec[nrec++] = parent[head1][cmp1++];
-    } else if (result === 1) { 
-        rec[nrec++] = parent[head2][cmp2++];
-    } else { 
+    if (result === -1) { rec[nrec++] = parent[head1][cmp1++]; }
+    else if (result === 1) { rec[nrec++] = parent[head2][cmp2++]; }
+    else { 
         rec[nrec++] = parent[head1][cmp1];
         equal[parent[head1][cmp1]] = parent[head2][cmp2];
         rec[nrec++] = parent[head2][cmp2++];
         cmp1++;
     }
-
     if (cmp1 < parent[head1].length && cmp2 < parent[head2].length) {
         numQuestion++;
     } else {
         while (cmp1 < parent[head1].length) rec[nrec++] = parent[head1][cmp1++];
         while (cmp2 < parent[head2].length) rec[nrec++] = parent[head2][cmp2++];
-
         parent[parent[head1]] = rec;
-        nrec = 0;
-        rec = [];
-        cmp1 = 0;
-        cmp2 = 0;
-        head1 -= 2;
-        head2 -= 2;
-
-        if (head1 < 0) {
-            finishFlag = 1;
-            showResult();
-            return;
-        }
+        nrec = 0; rec = []; cmp1 = 0; cmp2 = 0;
+        head1 -= 2; head2 -= 2;
+        if (head1 < 0) { finishFlag = 1; showResult(); return; }
         numQuestion++;
     }
     showUI();
 }
 
-// 5. 結果表示
 function showResult() {
     document.getElementById("sorter-ui").style.display = "none";
-    document.getElementById("progress-container").style.display = "none";
-    
     const resultList = document.getElementById("result-list");
     const rankingDiv = document.getElementById("ranking");
     resultList.style.display = "block";
-
     let html = "<ul>";
     let finalOrder = parent[0];
     for (let i = 0; i < finalOrder.length; i++) {
-        html += `<li><span class="rank">${i + 1}位</span> ${lstMember[finalOrder[i]]}</li>`;
+        const name = lstMember[finalOrder[i]] || "不明";
+        html += `<li><span class="rank">${i + 1}位</span> ${name}</li>`;
     }
     html += "</ul>";
     rankingDiv.innerHTML = html;
 }
 
-// 起動時に実行
 window.onload = loadSongs;
