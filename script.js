@@ -92,20 +92,21 @@ function initSort() {
 function showUI() {
     document.getElementById("counter").innerText = "質問 " + numQuestion;
 
-    // インデックスを取得
+    // parentから現在の比較対象となる「番号（0, 1, 2...）」を取り出す
     const idx1 = parent[head1][cmp1];
     const idx2 = parent[head2][cmp2];
 
-    // 曲名を取得（もし取得できなければ「不明」と表示）
-    const name1 = lstMember[idx1] !== undefined ? lstMember[idx1] : "不明(" + idx1 + ")";
-    const name2 = lstMember[idx2] !== undefined ? lstMember[idx2] : "不明(" + idx2 + ")";
+    // 【重要】lstMemberではなく、最初に読み込んだ「songData」から直接名前を引く
+    const name1 = songData[idx1];
+    const name2 = songData[idx2];
 
-    document.getElementById("left-btn").innerText = name1;
-    document.getElementById("right-btn").innerText = name2;
+    // 画面に表示（もしそれでも空なら番号を表示してデバッグ）
+    document.getElementById("left-btn").innerText = name1 !== undefined ? name1 : "曲名不明1(ID:" + idx1 + ")";
+    document.getElementById("right-btn").innerText = name2 !== undefined ? name2 : "曲名不明2(ID:" + idx2 + ")";
     
-    // 進捗（概算）
-    let totalQuestions = lstMember.length * Math.log2(lstMember.length || 1);
-    let progress = Math.min(Math.floor((numQuestion / totalQuestions) * 100), 99);
+    // 進捗バー
+    let totalQuestions = songData.length * Math.log2(songData.length || 1);
+    let progress = Math.min(Math.floor((numQuestion / (totalQuestions || 1)) * 100), 99);
     document.getElementById("progress").style.width = progress + "%";
 }
 
